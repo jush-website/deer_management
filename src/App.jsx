@@ -4,6 +4,16 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
 
 // ==========================================
+// 0. 確保 Tailwind CSS 成功載入 (解決沒有樣式的問題)
+// ==========================================
+if (typeof document !== 'undefined' && !document.getElementById('tailwind-script')) {
+  const twScript = document.createElement('script');
+  twScript.id = 'tailwind-script';
+  twScript.src = 'https://cdn.tailwindcss.com';
+  document.head.appendChild(twScript);
+}
+
+// ==========================================
 // 1. Firebase Initialization & Config
 // ==========================================
 // 若在 Canvas 環境會優先使用環境變數，若匯出至本機執行則使用您提供的 API 金鑰
