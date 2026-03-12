@@ -1,22 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
-
-// ==========================================
-// 0. 確保 Tailwind CSS 成功載入 (解決沒有樣式的問題)
-// ==========================================
-if (typeof document !== 'undefined' && !document.getElementById('tailwind-script')) {
-  const twScript = document.createElement('script');
-  twScript.id = 'tailwind-script';
-  twScript.src = 'https://cdn.tailwindcss.com';
-  document.head.appendChild(twScript);
-}
+import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 // ==========================================
 // 1. Firebase Initialization & Config
 // ==========================================
-// 若在 Canvas 環境會優先使用環境變數，若匯出至本機執行則使用您提供的 API 金鑰
 const userFirebaseConfig = {
   apiKey: "AIzaSyAdFJeGDJI9IxRZ9_k2ssOP9Ns3DL6Nhlg",
   authDomain: "deer-7327a.firebaseapp.com",
@@ -34,19 +23,12 @@ const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'deer-app';
 
 // ==========================================
-// 2. Mock Data (Fallback if DB is empty)
+// 2. Mock Data (Fallback)
 // ==========================================
 const MOCK_DATA = {
-  deerProfiles: [
-    { id: 'D-001', sex: 'M', birth_date: '2023-05-20', current_pen_id: 'PEN-A1', status: 'Active', ear_tag: '', breed: '台灣水鹿', sire_id: '', dam_id: '', source: '', purpose: '', antler_grade: 'A' },
-    { id: 'D-24004', sex: 'F', birth_date: '2021-04-13', current_pen_id: 'C-01', status: 'Quarantine', ear_tag: 'TW-7156', breed: '台灣水鹿', sire_id: '', dam_id: '', source: '購入', purpose: '繁殖', antler_grade: 'A' }
-  ],
-  feedingLogs: [
-    { feed_time: '2025-11-28 01:44', feed_period: 'AM', weather: '晴', target_group: '全場', area_id: 'PEN-A1', feed_content: '牧草+玉米', given_amount_kg: 25.5, leftover_amount_kg: 0, note: '食慾良好' }
-  ],
-  issueLogs: [
-    { date: '2025-12-01', deer_id: 'D-001', issue_type: '健康異常', description: '不吃東西', status: '未處理' }
-  ]
+  deerProfiles: [],
+  feedingLogs: [],
+  issueLogs: []
 };
 
 // ==========================================
@@ -70,8 +52,11 @@ const loadScript = (src) => {
 // 4. Main App Component
 // ==========================================
 export default function App() {
+  const [stylesLoaded, setStylesLoaded] = useState(false);
   const [user, setUser] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  
+  // 利用 localStorage 記住登入狀態，避免重新整理後登出
+  const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('sambar_user') || null);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [flashes, setFlashes] = useState([]);
   
@@ -80,13 +65,33 @@ export default function App() {
   const [feedLogs, setFeedLogs] = useState(MOCK_DATA.feedingLogs);
   const [issueLogs, setIssueLogs] = useState(MOCK_DATA.issueLogs);
 
+  // -- 載入 Tailwind CSS --
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const existingScript = document.getElementById('tailwind-script');
+      if (existingScript) {
+        setStylesLoaded(true);
+      } else {
+        const twScript = document.createElement('script');
+        twScript.id = 'tailwind-script';
+        twScript.src = 'https://cdn.tailwindcss.com';
+        twScript.onload = () => setStylesLoaded(true);
+        document.head.appendChild(twScript);
+      }
+    }
+  }, []);
+
   // -- Firebase Auth --
   useEffect(() => {
     const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error("登入失敗，請確認 Firebase 是否已啟用「匿名登入」", error);
       }
     };
     initAuth();
@@ -98,33 +103,38 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
-    // Listen to Deer Profiles
     const deerRef = collection(db, 'artifacts', appId, 'public', 'data', 'deerProfiles');
     const unsubDeer = onSnapshot(deerRef, (snapshot) => {
        const data = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-       setDeerList(data.length > 0 ? data : MOCK_DATA.deerProfiles);
+       setDeerList(data);
     }, (err) => console.error("Deer fetch error:", err));
 
-    // Listen to Feeding Logs
     const feedRef = collection(db, 'artifacts', appId, 'public', 'data', 'feedingLogs');
     const unsubFeed = onSnapshot(feedRef, (snapshot) => {
        const data = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-       setFeedLogs(data.length > 0 ? data.sort((a,b) => b.feed_time.localeCompare(a.feed_time)) : MOCK_DATA.feedingLogs);
+       setFeedLogs(data.sort((a,b) => b.feed_time.localeCompare(a.feed_time)));
     }, (err) => console.error("Feed fetch error:", err));
 
-    // Listen to Issue Logs
     const issueRef = collection(db, 'artifacts', appId, 'public', 'data', 'issueLogs');
     const unsubIssue = onSnapshot(issueRef, (snapshot) => {
        const data = snapshot.docs.map(doc => ({ firebaseId: doc.id, ...doc.data() }));
-       setIssueLogs(data.length > 0 ? data.sort((a,b) => b.date.localeCompare(a.date)) : MOCK_DATA.issueLogs);
+       setIssueLogs(data.sort((a,b) => b.date.localeCompare(a.date)));
     }, (err) => console.error("Issue fetch error:", err));
 
     return () => { unsubDeer(); unsubFeed(); unsubIssue(); };
   }, [user]);
 
   // -- Data Modification Handlers --
+  const requireAuth = () => {
+    if (!user) {
+      showFlash('操作被拒絕：連線異常，請至 Firebase 啟用「匿名登入」', 'error');
+      return false;
+    }
+    return true;
+  };
+
   const handleAddDeer = async (deerData) => {
-    if(!user) return;
+    if(!requireAuth()) return;
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'deerProfiles'), deerData);
       showFlash(`鹿隻 ${deerData.id} 建立成功！`, 'success');
@@ -132,23 +142,39 @@ export default function App() {
   };
 
   const handleUpdateDeer = async (firebaseId, deerData) => {
-    if(!user) return;
+    if(!requireAuth()) return;
     try {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deerProfiles', firebaseId), deerData);
       showFlash(`鹿隻資料已成功更新！`, 'success');
     } catch (e) { showFlash(`更新失敗: ${e.message}`, 'error'); }
   };
 
+  const handleDeleteDeer = async (firebaseId) => {
+    if(!requireAuth()) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'deerProfiles', firebaseId));
+      showFlash(`鹿隻已成功刪除！`, 'info');
+    } catch (e) { showFlash(`刪除失敗: ${e.message}`, 'error'); }
+  };
+
   const handleAddFeedLog = async (logData) => {
-    if(!user) return;
+    if(!requireAuth()) return;
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'feedingLogs'), logData);
       showFlash('✅ 飼養紀錄已儲存', 'success');
     } catch (e) { showFlash(`儲存失敗: ${e.message}`, 'error'); }
   };
 
+  const handleDeleteFeedLog = async (firebaseId) => {
+    if(!requireAuth()) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'feedingLogs', firebaseId));
+      showFlash(`紀錄已成功刪除！`, 'info');
+    } catch (e) { showFlash(`刪除失敗: ${e.message}`, 'error'); }
+  };
+
   const handleAddIssueLog = async (logData) => {
-    if(!user) return;
+    if(!requireAuth()) return;
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issueLogs'), logData);
       showFlash('✅ 異常回報已送出', 'success');
@@ -156,11 +182,19 @@ export default function App() {
   };
 
   const handleUpdateIssueStatus = async (firebaseId, newStatus) => {
-    if(!user) return;
+    if(!requireAuth()) return;
     try {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issueLogs', firebaseId), { status: newStatus });
       showFlash('✅ 問題狀態已更新', 'success');
     } catch (e) { showFlash(`狀態更新失敗: ${e.message}`, 'error'); }
+  };
+
+  const handleDeleteIssueLog = async (firebaseId) => {
+    if(!requireAuth()) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issueLogs', firebaseId));
+      showFlash(`回報紀錄已成功刪除！`, 'info');
+    } catch (e) { showFlash(`刪除失敗: ${e.message}`, 'error'); }
   };
 
   // -- UI Helpers --
@@ -174,15 +208,28 @@ export default function App() {
 
   const handleLogin = (username) => {
     setCurrentUser(username);
+    localStorage.setItem('sambar_user', username); // 記住登入狀態
     setCurrentPage('dashboard');
     showFlash(`歡迎回來，${username}！`, 'success');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    localStorage.removeItem('sambar_user'); // 清除登入狀態
     setCurrentPage('login');
     showFlash('已成功登出', 'info');
   };
+
+  // 在 Tailwind 樣式載入前，顯示純 CSS 的加載畫面遮罩
+  if (!stylesLoaded) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'linear-gradient(135deg, #fdfbf7 0%, #e8f5e9 50%, #e3f2fd 100%)', fontFamily: 'sans-serif' }}>
+        <div style={{ fontSize: '5rem', animation: 'bounce 1s infinite alternate' }}>🦌</div>
+        <h2 style={{ color: '#2f855a', marginTop: '20px', fontWeight: 'bold', letterSpacing: '2px' }}>牧場系統載入中...</h2>
+        <style>{`@keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-20px); } }`}</style>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
@@ -230,11 +277,12 @@ export default function App() {
           </div>
 
           {/* Router / View Switcher */}
-          {currentPage === 'dashboard' && <Dashboard deerList={deerList} issueLogs={issueLogs} onAddIssue={handleAddIssueLog} onUpdateIssueStatus={handleUpdateIssueStatus} username={currentUser} />}
-          {currentPage === 'deer_profiles' && <DeerProfiles deerList={deerList} onAdd={handleAddDeer} onUpdate={handleUpdateDeer} />}
-          {currentPage === 'feeding' && <Feeding feedLogs={feedLogs} onAddFeed={handleAddFeedLog} username={currentUser} />}
+          {currentPage === 'dashboard' && <Dashboard deerList={deerList} issueLogs={issueLogs} onAddIssue={handleAddIssueLog} onUpdateIssueStatus={handleUpdateIssueStatus} onDeleteIssue={handleDeleteIssueLog} username={currentUser} />}
+          {currentPage === 'deer_profiles' && <DeerProfiles deerList={deerList} onAdd={handleAddDeer} onUpdate={handleUpdateDeer} onDelete={handleDeleteDeer} />}
+          {currentPage === 'feeding' && <Feeding feedLogs={feedLogs} onAddFeed={handleAddFeedLog} onDeleteFeed={handleDeleteFeedLog} username={currentUser} />}
           {currentPage === 'digital_twin' && <DigitalTwin deerList={deerList} setCurrentPage={setCurrentPage} />}
-          {(currentPage === 'growth' || currentPage === 'environment') && (
+          {currentPage === 'environment' && <Environment />}
+          {currentPage === 'growth' && (
             <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
               <h1 className="text-3xl font-bold text-gray-400 mb-4">🚧 Coming Soon...</h1>
               <p className="text-gray-500">此模組正在開發中，敬請期待！</p>
@@ -277,7 +325,6 @@ function Login({ onLogin }) {
     if (isSubmitting) return;
     setIsSubmitting(true);
     
-    // Trigger animations
     document.getElementById('runner-container').classList.add('dash-animation');
     document.getElementById('loginWrapper').classList.add('fade-out');
 
@@ -329,12 +376,11 @@ function Login({ onLogin }) {
 }
 
 // --- Dashboard View ---
-function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, username }) {
+function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, onDeleteIssue, username }) {
   const chartRef = useRef(null);
   const chartInstance = useRef(null);
   const activeDeerCount = deerList.filter(d => d.status === 'Active').length;
   
-  // Issue Report Form State
   const [reportData, setReportData] = useState({ deer_id: '', issue_type: '健康異常', description: '' });
 
   useEffect(() => {
@@ -375,10 +421,7 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, usern
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { labels: { font: { family: "'Noto Sans TC', sans-serif" } } } },
-          scales: {
-            x: { grid: { color: "#f0f0f0" } },
-            y: { grid: { color: "#f0f0f0" } }
-          }
+          scales: { x: { grid: { color: "#f0f0f0" } }, y: { grid: { color: "#f0f0f0" } } }
         }
       });
 
@@ -414,14 +457,12 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, usern
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Welcome Banner */}
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-10 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-white relative overflow-hidden transition-transform hover:-translate-y-1 group">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#84fab0] to-[#8fd3f4]"></div>
         <h2 className="text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">👋 早安, {username}!</h2>
         <p className="text-gray-500 font-medium text-lg">這裡是今日牧場概況 · {todayStr}</p>
       </div>
 
-      {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard label="🦌 在養頭數" value={activeDeerCount} desc="正常運作" />
         <MetricCard label="💧 環境濕度" value="65.2" suffix="%" desc="適宜" />
@@ -430,13 +471,11 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, usern
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Chart Section */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
           <h3 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📊 環境趨勢分析</h3>
           <div className="h-[350px] w-full"><canvas ref={chartRef}></canvas></div>
         </div>
 
-        {/* Notifications Section */}
         <div className="bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
           <h3 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">🔔 系統通知</h3>
           <div className="space-y-4">
@@ -447,7 +486,6 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, usern
         </div>
       </div>
 
-      {/* Report & History Section */}
       <div className="bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100">
         <h3 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📢 異常回報與追蹤</h3>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
@@ -485,7 +523,7 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, usern
                     <th className="p-4 border-b-2 border-gray-200">鹿號</th>
                     <th className="p-4 border-b-2 border-gray-200">類型</th>
                     <th className="p-4 border-b-2 border-gray-200">描述</th>
-                    <th className="p-4 border-b-2 border-gray-200 text-center">狀態</th>
+                    <th className="p-4 border-b-2 border-gray-200 text-center">操作/狀態</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -495,17 +533,20 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, usern
                       <td className="p-4 font-bold text-gray-800">{log.deer_id}</td>
                       <td className="p-4 text-gray-600">{log.issue_type}</td>
                       <td className="p-4 text-gray-600 max-w-[150px] truncate" title={log.description}>{log.description}</td>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center flex items-center justify-center gap-2">
                         {log.firebaseId ? (
-                          <select 
-                            value={log.status} 
-                            onChange={(e) => onUpdateIssueStatus(log.firebaseId, e.target.value)}
-                            className={`px-2 py-1 rounded-full text-xs font-bold border-none outline-none cursor-pointer text-center ${log.status === '未處理' ? 'bg-red-100 text-red-700' : log.status === '已解決' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
-                          >
-                            <option value="未處理">未處理</option>
-                            <option value="處理中">處理中</option>
-                            <option value="已解決">已解決</option>
-                          </select>
+                          <>
+                            <select 
+                              value={log.status} 
+                              onChange={(e) => onUpdateIssueStatus(log.firebaseId, e.target.value)}
+                              className={`px-2 py-1 rounded-md text-xs font-bold border-none outline-none cursor-pointer text-center ${log.status === '未處理' ? 'bg-red-100 text-red-700' : log.status === '已解決' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}
+                            >
+                              <option value="未處理">未處理</option>
+                              <option value="處理中">處理中</option>
+                              <option value="已解決">已解決</option>
+                            </select>
+                            <button onClick={() => onDeleteIssue(log.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-xs bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors">刪除</button>
+                          </>
                         ) : (
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${log.status === '未處理' ? 'bg-red-100 text-red-700' : log.status === '已解決' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{log.status}</span>
                         )}
@@ -553,7 +594,7 @@ function NotificationCard({ type, title, desc }) {
 }
 
 // --- Deer Profiles View ---
-function DeerProfiles({ deerList, onAdd, onUpdate }) {
+function DeerProfiles({ deerList, onAdd, onUpdate, onDelete }) {
   const initialState = { deer_id: '', ear_tag: '', breed: '台灣水鹿', sex: 'M', sire_id: '', dam_id: '', source: '自繁', purpose: '採茸', birth_date: '', pen_id: '', status: 'Active', antler_grade: 'A' };
   const [formData, setFormData] = useState(initialState);
   const [editingId, setEditingId] = useState(null);
@@ -700,7 +741,10 @@ function DeerProfiles({ deerList, onAdd, onUpdate }) {
                     </td>
                     <td className="p-4 text-center">
                       {row.firebaseId && (
-                        <button onClick={() => handleEdit(row)} className="text-indigo-500 hover:text-indigo-700 font-bold text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded transition-colors">修改</button>
+                        <div className="flex gap-2 justify-center">
+                          <button onClick={() => handleEdit(row)} className="text-indigo-500 hover:text-indigo-700 font-bold text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded transition-colors">修改</button>
+                          <button onClick={() => onDelete(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors">刪除</button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -715,7 +759,7 @@ function DeerProfiles({ deerList, onAdd, onUpdate }) {
 }
 
 // --- Feeding View ---
-function Feeding({ feedLogs, onAddFeed, username }) {
+function Feeding({ feedLogs, onAddFeed, onDeleteFeed, username }) {
   const [formData, setFormData] = useState({ feed_period: 'AM', weather: '晴', target_group: '全場', area_id: '', feed_content: 'TMR', amount: '', leftover: '', note: '' });
 
   const handleSubmit = (e) => {
@@ -793,6 +837,7 @@ function Feeding({ feedLogs, onAddFeed, username }) {
                   <th className="p-3 text-green-800 font-bold text-sm">飼料</th>
                   <th className="p-3 text-green-800 font-bold text-sm">投餵 / 剩料</th>
                   <th className="p-3 text-green-800 font-bold text-sm">備註</th>
+                  <th className="p-3 text-green-800 font-bold text-sm text-center">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -810,6 +855,11 @@ function Feeding({ feedLogs, onAddFeed, username }) {
                       {row.leftover_amount_kg > 0 && <div className="text-red-600 text-xs">剩 {row.leftover_amount_kg} kg</div>}
                     </td>
                     <td className="p-3 text-sm text-gray-600 max-w-[150px] truncate" title={row.note}>{row.note || '-'}</td>
+                    <td className="p-3 text-center">
+                      {row.firebaseId && (
+                        <button onClick={() => onDeleteFeed(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors">刪除</button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -849,13 +899,12 @@ function DigitalTwin({ deerList, setCurrentPage }) {
       const THREE = window.THREE;
       if (!containerRef.current) return;
 
-      // Scene setup
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x1a1a24); // 室內暗色背景
+      scene.background = new THREE.Color(0x1a1a24);
       scene.fog = new THREE.Fog(0x1a1a24, 20, 100);
 
       const camera = new THREE.PerspectiveCamera(50, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
-      camera.position.set(0, 15, 40); // 攝影機移至室內走道上方
+      camera.position.set(0, 15, 40);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
@@ -863,10 +912,8 @@ function DigitalTwin({ deerList, setCurrentPage }) {
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       containerRef.current.appendChild(renderer.domElement);
 
-      // Lights (室內燈光設定)
-      scene.add(new THREE.AmbientLight(0xffffff, 0.4)); // 基礎環境光
+      scene.add(new THREE.AmbientLight(0xffffff, 0.4));
       
-      // 沿著走道建立頂部探照燈/懸掛燈
       for (let z = -40; z <= 40; z += 25) {
         const pointLight = new THREE.PointLight(0xfff5b6, 0.8, 80);
         pointLight.position.set(0, 18, z);
@@ -875,7 +922,6 @@ function DigitalTwin({ deerList, setCurrentPage }) {
         pointLight.shadow.mapSize.height = 1024;
         scene.add(pointLight);
         
-        // 發光燈泡
         const bulb = new THREE.Mesh(
           new THREE.SphereGeometry(0.8, 16, 16), 
           new THREE.MeshBasicMaterial({ color: 0xffffee })
@@ -884,40 +930,32 @@ function DigitalTwin({ deerList, setCurrentPage }) {
         scene.add(bulb);
       }
 
-      // 建立室內牧場結構
       const buildIndoorBarn = () => {
         const barnGroup = new THREE.Group();
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4036, roughness: 1.0 }); // 粗糙水泥/木牆
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x6e757a, roughness: 0.9, metalness: 0.1 }); // 水泥地
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4036, roughness: 1.0 });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x6e757a, roughness: 0.9, metalness: 0.1 });
         
-        // 地板
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 120), floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.receiveShadow = true;
         barnGroup.add(floor);
 
-        // 牆壁
         const createWall = (w, h, d, x, y, z) => {
           const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
           wall.position.set(x, y, z);
           wall.receiveShadow = true;
           barnGroup.add(wall);
         };
-        createWall(2, 20, 120, -50, 10, 0); // 左牆
-        createWall(2, 20, 120, 50, 10, 0);  // 右牆
-        createWall(100, 20, 2, 0, 10, -60); // 後牆
-        createWall(100, 20, 2, 0, 10, 60);  // 前牆
-        
-        // 天花板
+        createWall(2, 20, 120, -50, 10, 0);
+        createWall(2, 20, 120, 50, 10, 0); 
+        createWall(100, 20, 2, 0, 10, -60);
+        createWall(100, 20, 2, 0, 10, 60); 
         createWall(100, 2, 120, 0, 21, 0);
 
-        // 鐵管/木管柵欄材質
         const pipeMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.4 });
         
-        // 建立單個柵欄區域
         const createPen = (cx, cz, w, d) => {
-          const h = 4.5; // 柵欄高度
-          // 立柱
+          const h = 4.5;
           for(let px of [cx - w/2, cx + w/2]) {
             for(let pz of [cz - d/2, cz + d/2]) {
               const post = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, h), pipeMat);
@@ -927,9 +965,7 @@ function DigitalTwin({ deerList, setCurrentPage }) {
               barnGroup.add(post);
             }
           }
-          // 橫桿
           for(let py of [1, 2.5, 4]) {
-            // 前後橫桿
             for(let pz of [cz - d/2, cz + d/2]) {
               const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, w), pipeMat);
               bar.rotation.z = Math.PI/2;
@@ -937,7 +973,6 @@ function DigitalTwin({ deerList, setCurrentPage }) {
               bar.castShadow = true;
               barnGroup.add(bar);
             }
-            // 左右橫桿
             for(let px of [cx - w/2, cx + w/2]) {
               const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, d), pipeMat);
               bar.rotation.x = Math.PI/2;
@@ -948,34 +983,29 @@ function DigitalTwin({ deerList, setCurrentPage }) {
           }
         };
 
-        // 兩側建立欄位
         for(let i = 0; i < 4; i++) {
-          createPen(-25, -40 + i * 25, 40, 20); // 左側區域
-          createPen( 25, -40 + i * 25, 40, 20); // 右側區域
+          createPen(-25, -40 + i * 25, 40, 20);
+          createPen( 25, -40 + i * 25, 40, 20);
         }
 
         scene.add(barnGroup);
       };
 
-      // 執行室內牧場生成
       buildIndoorBarn();
       
-      // Controls
       const controls = new window.THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true; 
       controls.maxPolarAngle = Math.PI / 2 - 0.05;
       controls.minDistance = 5;
-      controls.maxDistance = 60; // 限制視角不出牆壁
+      controls.maxDistance = 60;
 
-      // Deer Generator
       const createDeer = () => {
         const group = new THREE.Group();
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x8b6f47 });
         
-        // Fix: Use SphereGeometry with scale to simulate CapsuleGeometry (which is not available in r128)
         const bodyGeo = new THREE.SphereGeometry(1, 18, 18);
         const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.scale.set(0.72, 2.5, 0.72); // Stretch it to look like a capsule
+        body.scale.set(0.72, 2.5, 0.72);
         body.rotation.z = Math.PI/2; 
         body.position.y = 1.28; 
         body.castShadow = true;
@@ -990,17 +1020,14 @@ function DigitalTwin({ deerList, setCurrentPage }) {
         return group;
       };
 
-      // Populate Deer
       const activeDeer = deerList.filter(d => d.status === 'Active');
       activeDeer.forEach((d, i) => {
         const mesh = createDeer();
-        // 將鹿隻分配到兩側的柵欄內
         const isLeft = i % 2 === 0;
         const penRow = Math.floor(i / 2) % 4;
         const cx = isLeft ? -25 : 25;
         const cz = -40 + penRow * 25;
         
-        // 在欄位內隨機站位
         const offsetX = (Math.random() - 0.5) * 35;
         const offsetZ = (Math.random() - 0.5) * 15;
         
@@ -1119,6 +1146,169 @@ function DigitalTwin({ deerList, setCurrentPage }) {
     </div>
   );
 }
+
+// --- Environment View (IoT Dashboard) ---
+function Environment() {
+  const chartRef = useRef(null);
+  const chartInstance = useRef(null);
+  const [time, setTime] = useState(new Date());
+  const [sensorData, setSensorData] = useState({
+    temp: 28.5, hum: 65.2, nh3: 5.2, thi: 78.5
+  });
+
+  // 更新時鐘
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // 生成即時動態圖表
+  useEffect(() => {
+    let interval;
+    loadScript('https://cdn.jsdelivr.net/npm/chart.js').then(() => {
+      if (!chartRef.current) return;
+      const ctx = chartRef.current.getContext('2d');
+      const calcTHI = (T, RH) => +(T - (0.55 - 0.0055 * RH) * (T - 14.5)).toFixed(1);
+
+      let currentTemp = 28.5;
+      let currentHum = 65.2;
+      let currentNh3 = 5.2;
+      let timeNow = Date.now();
+
+      // 產生過去的假資料點來填滿初始圖表
+      const history = Array.from({length: 20}, (_, i) => {
+         let t = currentTemp + (Math.random() * 2 - 1);
+         let h = currentHum + (Math.random() * 5 - 2.5);
+         let n = currentNh3 + (Math.random() * 1 - 0.5);
+         return {
+            t: timeNow - (19 - i) * 3000,
+            temp: +t.toFixed(1),
+            hum: +h.toFixed(1),
+            nh3: +Math.max(0, n).toFixed(1)
+         };
+      });
+
+      chartInstance.current = new window.Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: history.map(d => new Date(d.t).toLocaleTimeString('zh-TW', {hour12:false})),
+          datasets: [
+            { label: "溫度 (°C)", data: history.map(d=>d.temp), borderColor: "#ef4444", backgroundColor: "rgba(239,68,68,0.05)", tension: 0.4, fill: true, borderWidth: 2 },
+            { label: "濕度 (%)", data: history.map(d=>d.hum), borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.05)", tension: 0.4, fill: true, borderWidth: 2 },
+            { label: "氨氣 (ppm)", data: history.map(d=>d.nh3), borderColor: "#eab308", backgroundColor: "rgba(234,179,8,0.05)", tension: 0.4, fill: true, borderWidth: 2 },
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          animation: { duration: 400, easing: 'linear' },
+          plugins: { legend: { labels: { font: { family: "'Noto Sans TC', sans-serif" } } } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: "#f0f0f0" } }
+          }
+        }
+      });
+
+      // 每 3 秒模擬 IoT 設備傳來新數據
+      interval = setInterval(() => {
+        timeNow = Date.now();
+        currentTemp += (Math.random() * 0.8 - 0.4);
+        currentHum += (Math.random() * 2 - 1);
+        currentNh3 += (Math.random() * 0.6 - 0.3);
+        
+        currentNh3 = Math.max(0, currentNh3); // 氨氣不為負數
+        if (currentHum > 100) currentHum = 100;
+        if (currentHum < 30) currentHum = 30;
+
+        const newData = {
+          temp: +currentTemp.toFixed(1),
+          hum: +currentHum.toFixed(1),
+          nh3: +currentNh3.toFixed(1),
+          thi: calcTHI(currentTemp, currentHum)
+        };
+
+        setSensorData(newData);
+
+        if (chartInstance.current) {
+           const chart = chartInstance.current;
+           const timeStr = new Date(timeNow).toLocaleTimeString('zh-TW', {hour12:false});
+           chart.data.labels.push(timeStr);
+           chart.data.labels.shift();
+           chart.data.datasets[0].data.push(newData.temp); chart.data.datasets[0].data.shift();
+           chart.data.datasets[1].data.push(newData.hum); chart.data.datasets[1].data.shift();
+           chart.data.datasets[2].data.push(newData.nh3); chart.data.datasets[2].data.shift();
+           chart.update();
+        }
+      }, 3000);
+    });
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if (chartInstance.current) chartInstance.current.destroy();
+    };
+  }, []);
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      {/* 科技感標頭區塊 */}
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row justify-between items-center text-white border border-gray-700 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-green-500 rounded-full mix-blend-overlay filter blur-3xl opacity-20 animate-pulse"></div>
+        <div className="relative z-10">
+          <h1 className="text-3xl font-bold flex items-center gap-3 tracking-wide">📡 環境監控數位儀表板</h1>
+          <p className="text-gray-400 mt-2 font-medium">IoT 感測器即時連線與分析中心</p>
+        </div>
+        <div className="relative z-10 text-right mt-6 md:mt-0 bg-gray-800/80 p-5 rounded-2xl border border-gray-600 shadow-inner">
+          <div className="text-4xl font-black font-mono text-green-400 tracking-wider drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]">
+            {time.toLocaleTimeString('zh-TW', {hour12: false})}
+          </div>
+          <div className="text-sm font-bold text-gray-400 mt-2">
+            {time.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+          </div>
+        </div>
+      </div>
+
+      {/* 數位數值卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <EnvCard title="🌡️ 即時溫度" value={sensorData.temp} unit="°C" status={sensorData.temp > 32 ? 'critical' : sensorData.temp < 15 ? 'warning' : 'normal'} />
+        <EnvCard title="💧 相對濕度" value={sensorData.hum} unit="%" status={sensorData.hum > 85 ? 'warning' : 'normal'} />
+        <EnvCard title="💨 氨氣濃度 (NH3)" value={sensorData.nh3} unit="ppm" status={sensorData.nh3 > 15 ? 'critical' : sensorData.nh3 > 8 ? 'warning' : 'normal'} />
+        <EnvCard title="📊 溫濕度指數 (THI)" value={sensorData.thi} unit="" status={sensorData.thi > 80 ? 'critical' : 'normal'} />
+      </div>
+
+      {/* 動態折線圖區塊 */}
+      <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+         <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50 flex justify-between items-center">
+            <span>📈 感測器歷史趨勢圖</span>
+            <span className="flex items-center gap-2 text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> 即時更新中</span>
+         </h2>
+         <div className="h-[450px] w-full"><canvas ref={chartRef}></canvas></div>
+      </div>
+    </div>
+  );
+}
+
+// 儀表板卡片子元件
+function EnvCard({ title, value, unit, status }) {
+  const styles = {
+    normal: { text: "text-green-600", bg: "bg-green-50", border: "border-green-100", glow: "from-green-400 to-emerald-300" },
+    warning: { text: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-100", glow: "from-yellow-400 to-orange-300" },
+    critical: { text: "text-red-600", bg: "bg-red-50", border: "border-red-100", glow: "from-red-500 to-rose-400" }
+  };
+
+  const currentStyle = styles[status];
+
+  return (
+    <div className={`rounded-3xl p-6 shadow-sm border relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md ${currentStyle.bg} ${currentStyle.border}`}>
+       <div className="text-gray-600 font-bold mb-3 relative z-10 text-sm">{title}</div>
+       <div className="flex items-baseline gap-2 relative z-10">
+          <span className={`text-5xl font-black tracking-tight font-mono ${currentStyle.text}`}>{value}</span>
+          <span className="text-lg font-bold text-gray-500">{unit}</span>
+       </div>
+       <div className={`absolute -right-6 -bottom-6 w-32 h-32 rounded-full opacity-20 bg-gradient-to-br ${currentStyle.glow} blur-xl`}></div>
+    </div>
+  );
+}
+
 
 // ==========================================
 // Global Styles (Keyframes & Animations in JSX)
