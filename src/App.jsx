@@ -58,6 +58,7 @@ export default function App() {
   // 利用 localStorage 記住登入狀態，避免重新整理後登出
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('sambar_user') || null);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 行動版選單狀態
   const [flashes, setFlashes] = useState([]);
   
   // App State Data (Synchronized with Firebase)
@@ -220,6 +221,11 @@ export default function App() {
     showFlash('已成功登出', 'info');
   };
 
+  const handleNavClick = (page) => {
+    setCurrentPage(page);
+    setIsMobileMenuOpen(false); // 切換頁面後自動關閉手機選單
+  };
+
   // 在 Tailwind 樣式載入前，顯示純 CSS 的加載畫面遮罩
   if (!stylesLoaded) {
     return (
@@ -245,29 +251,54 @@ export default function App() {
       <GlobalStyles />
       <div className="min-h-screen font-sans text-gray-800" style={{ background: 'var(--bg-gradient)' }}>
         {/* Navbar */}
-        <nav className="sticky top-0 z-50 flex items-center justify-between h-[70px] px-8 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
-          <div className="flex items-center gap-2 text-2xl font-bold text-[#2f855a] tracking-wide cursor-pointer" onClick={() => setCurrentPage('dashboard')}>
+        <nav className="sticky top-0 z-50 flex items-center justify-between h-[70px] px-4 md:px-8 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100">
+          <div className="flex items-center gap-2 text-xl md:text-2xl font-bold text-[#2f855a] tracking-wide cursor-pointer" onClick={() => handleNavClick('dashboard')}>
             🦌 Sambar Deer MIS
           </div>
           
-          <div className="hidden md:flex items-center gap-2">
+          {/* Desktop Menu */}
+          <div className="hidden lg:flex items-center gap-2">
             <span className="text-gray-500 font-medium pr-4 mr-2 border-r-2 border-gray-200 text-sm">
               👋 {currentUser}
             </span>
-            <NavButton active={currentPage === 'dashboard'} onClick={() => setCurrentPage('dashboard')}>儀表板</NavButton>
-            <NavButton active={currentPage === 'digital_twin'} onClick={() => setCurrentPage('digital_twin')} className="bg-gradient-to-br from-teal-500 to-teal-400 text-white shadow-md hover:-translate-y-0.5">✨ 數位農場</NavButton>
-            <NavButton active={currentPage === 'deer_profiles'} onClick={() => setCurrentPage('deer_profiles')}>鹿籍履歷</NavButton>
-            <NavButton active={currentPage === 'feeding'} onClick={() => setCurrentPage('feeding')}>飼養管理</NavButton>
-            <NavButton active={currentPage === 'growth'} onClick={() => setCurrentPage('growth')}>生長紀錄</NavButton>
-            <NavButton active={currentPage === 'environment'} onClick={() => setCurrentPage('environment')}>環境監控</NavButton>
+            <NavButton active={currentPage === 'dashboard'} onClick={() => handleNavClick('dashboard')}>儀表板</NavButton>
+            <NavButton active={currentPage === 'digital_twin'} onClick={() => handleNavClick('digital_twin')} className="bg-gradient-to-br from-teal-500 to-teal-400 text-white shadow-md hover:-translate-y-0.5">✨ 數位農場</NavButton>
+            <NavButton active={currentPage === 'deer_profiles'} onClick={() => handleNavClick('deer_profiles')}>鹿籍履歷</NavButton>
+            <NavButton active={currentPage === 'feeding'} onClick={() => handleNavClick('feeding')}>飼養管理</NavButton>
+            <NavButton active={currentPage === 'growth'} onClick={() => handleNavClick('growth')}>生長紀錄</NavButton>
+            <NavButton active={currentPage === 'environment'} onClick={() => handleNavClick('environment')}>環境監控</NavButton>
             <button onClick={handleLogout} className="px-5 py-2 rounded-full font-medium transition-all text-red-600 border-2 border-red-200 hover:bg-red-50 text-sm ml-2">登出</button>
           </div>
+
+          {/* Mobile Menu Toggle Button */}
+          <button 
+            className="lg:hidden text-2xl text-gray-600 hover:text-[#2f855a] p-2 focus:outline-none"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? '✕' : '☰'}
+          </button>
         </nav>
 
+        {/* Mobile Dropdown Menu */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden fixed top-[70px] left-0 w-full bg-white/95 backdrop-blur-xl shadow-lg border-b border-gray-100 p-4 flex flex-col gap-3 z-40 animate-slide-in">
+            <span className="text-gray-500 font-medium text-sm border-b border-gray-100 pb-3 mb-1 text-center">
+              👋 目前登入：{currentUser}
+            </span>
+            <MobileNavButton active={currentPage === 'dashboard'} onClick={() => handleNavClick('dashboard')}>📊 儀表板</MobileNavButton>
+            <MobileNavButton active={currentPage === 'digital_twin'} onClick={() => handleNavClick('digital_twin')} className="bg-gradient-to-br from-teal-500 to-teal-400 text-white">✨ 數位農場</MobileNavButton>
+            <MobileNavButton active={currentPage === 'deer_profiles'} onClick={() => handleNavClick('deer_profiles')}>📋 鹿籍履歷</MobileNavButton>
+            <MobileNavButton active={currentPage === 'feeding'} onClick={() => handleNavClick('feeding')}>🌾 飼養管理</MobileNavButton>
+            <MobileNavButton active={currentPage === 'growth'} onClick={() => handleNavClick('growth')}>📈 生長紀錄</MobileNavButton>
+            <MobileNavButton active={currentPage === 'environment'} onClick={() => handleNavClick('environment')}>📡 環境監控</MobileNavButton>
+            <button onClick={handleLogout} className="mt-2 py-3 rounded-xl font-bold transition-all text-red-600 bg-red-50 border border-red-100 text-center">登出系統</button>
+          </div>
+        )}
+
         {/* Main Content Area */}
-        <main className="max-w-[1400px] mx-auto p-8 animate-fade-in relative">
-          {/* Flash Messages - 移到外層並設定 fixed 確保永遠在最上方 */}
-          <div className="fixed top-[80px] right-8 z-[100] flex flex-col gap-3 pointer-events-none">
+        <main className="max-w-[1400px] mx-auto p-4 md:p-8 animate-fade-in relative">
+          {/* Flash Messages */}
+          <div className="fixed top-[80px] right-4 md:right-8 z-[100] flex flex-col gap-3 pointer-events-none w-[calc(100%-2rem)] md:w-auto">
             {flashes.map(f => (
               <div key={f.id} className={`flex items-center p-4 rounded-xl shadow-lg bg-white border-l-4 font-medium animate-slide-in pointer-events-auto ${f.type === 'success' ? 'border-green-500 text-green-800' : f.type === 'error' ? 'border-red-500 text-red-800' : 'border-blue-500 text-blue-800'}`}>
                 <span className="mr-3">{f.type === 'success' ? '✅' : f.type === 'error' ? '❌' : 'ℹ️'}</span>
@@ -280,11 +311,11 @@ export default function App() {
           {currentPage === 'dashboard' && <Dashboard deerList={deerList} issueLogs={issueLogs} onAddIssue={handleAddIssueLog} onUpdateIssueStatus={handleUpdateIssueStatus} onDeleteIssue={handleDeleteIssueLog} username={currentUser} />}
           {currentPage === 'deer_profiles' && <DeerProfiles deerList={deerList} onAdd={handleAddDeer} onUpdate={handleUpdateDeer} onDelete={handleDeleteDeer} />}
           {currentPage === 'feeding' && <Feeding feedLogs={feedLogs} onAddFeed={handleAddFeedLog} onDeleteFeed={handleDeleteFeedLog} username={currentUser} />}
-          {currentPage === 'digital_twin' && <DigitalTwin deerList={deerList} setCurrentPage={setCurrentPage} />}
+          {currentPage === 'digital_twin' && <DigitalTwin deerList={deerList} setCurrentPage={handleNavClick} />}
           {currentPage === 'environment' && <Environment />}
           {currentPage === 'growth' && (
-            <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-              <h1 className="text-3xl font-bold text-gray-400 mb-4">🚧 Coming Soon...</h1>
+            <div className="bg-white rounded-2xl p-8 md:p-12 text-center shadow-sm border border-gray-100">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-400 mb-4">🚧 Coming Soon...</h1>
               <p className="text-gray-500">此模組正在開發中，敬請期待！</p>
             </div>
           )}
@@ -294,7 +325,7 @@ export default function App() {
   );
 }
 
-// --- Navigation Button ---
+// --- Navigation Buttons ---
 function NavButton({ children, active, onClick, className = '' }) {
   return (
     <button 
@@ -303,6 +334,21 @@ function NavButton({ children, active, onClick, className = '' }) {
         active 
           ? 'bg-[#2f855a] text-white shadow-lg shadow-green-600/30' 
           : 'text-gray-600 hover:bg-green-50 hover:text-[#2f855a]'
+      } ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MobileNavButton({ children, active, onClick, className = '' }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`px-4 py-3 rounded-xl font-bold transition-all text-left ${
+        active 
+          ? 'bg-[#2f855a] text-white shadow-md' 
+          : 'text-gray-700 bg-gray-50 hover:bg-gray-100'
       } ${className}`}
     >
       {children}
@@ -334,41 +380,41 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="relative flex items-center justify-center min-h-screen p-8 overflow-hidden bg-gradient-to-br from-[#fdfbf7] via-[#e8f5e9] to-[#e3f2fd]">
+    <div className="relative flex items-center justify-center min-h-screen p-4 md:p-8 overflow-hidden bg-gradient-to-br from-[#fdfbf7] via-[#e8f5e9] to-[#e3f2fd]">
       <div className="absolute w-[200%] h-[200%] top-[-50%] left-[-50%] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(132, 250, 176, 0.1) 0%, transparent 70%)', animation: 'rotateGradient 20s linear infinite' }}></div>
       
-      <div className="absolute top-[15%] text-6xl opacity-70 animate-float-cloud-1 drop-shadow-sm">☁️</div>
-      <div className="absolute top-[40%] text-5xl opacity-70 animate-float-cloud-2 drop-shadow-sm">☁️</div>
-      <div className="absolute top-[65%] text-7xl opacity-70 animate-float-cloud-3 drop-shadow-sm">☁️</div>
+      <div className="absolute top-[15%] text-5xl md:text-6xl opacity-70 animate-float-cloud-1 drop-shadow-sm">☁️</div>
+      <div className="absolute top-[40%] text-4xl md:text-5xl opacity-70 animate-float-cloud-2 drop-shadow-sm">☁️</div>
+      <div className="absolute top-[65%] text-6xl md:text-7xl opacity-70 animate-float-cloud-3 drop-shadow-sm">☁️</div>
 
-      <div className="absolute bottom-0 left-0 w-full h-[80px] bg-cover bg-no-repeat opacity-70 z-10" style={{ backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23e2f5e8" fill-opacity="0.6" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>')`}}></div>
+      <div className="absolute bottom-0 left-0 w-full h-[60px] md:h-[80px] bg-cover bg-no-repeat opacity-70 z-10" style={{ backgroundImage: `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23e2f5e8" fill-opacity="0.6" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>')`}}></div>
 
       <div id="runner-container" className="fixed top-[55%] left-[50%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-[100] opacity-0 hidden">
-        <div className="text-[6rem] drop-shadow-md animate-gallop">🦌💨</div>
+        <div className="text-[5rem] md:text-[6rem] drop-shadow-md animate-gallop">🦌💨</div>
       </div>
 
       <div id="loginWrapper" className="w-full max-w-[440px] relative z-20 animate-fade-in-up">
-        <div className="bg-white/95 backdrop-blur-xl rounded-[32px] p-12 text-center shadow-[0_10px_40px_rgba(139,119,101,0.08)] border-4 border-white relative transition-transform hover:-translate-y-1">
-          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#84fab0] via-[#8fd3f4] to-[#a6c1ee] rounded-t-[32px]"></div>
+        <div className="bg-white/95 backdrop-blur-xl rounded-[24px] md:rounded-[32px] p-8 md:p-12 text-center shadow-[0_10px_40px_rgba(139,119,101,0.08)] border-4 border-white relative transition-transform hover:-translate-y-1">
+          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#84fab0] via-[#8fd3f4] to-[#a6c1ee] rounded-t-[20px] md:rounded-t-[28px]"></div>
           
-          <div className="text-[5rem] mb-3 inline-block animate-float-deer drop-shadow-[0_4px_12px_rgba(132,250,176,0.3)] transition-transform hover:scale-110 hover:rotate-6">🦌</div>
-          <div className="text-3xl font-bold bg-gradient-to-br from-[#5d576b] to-[#7d778b] bg-clip-text text-transparent mb-1 tracking-wide">Deer MIS</div>
-          <div className="text-gray-400 text-base mb-10 font-medium">台灣水鹿牧場管理系統</div>
+          <div className="text-[4rem] md:text-[5rem] mb-3 inline-block animate-float-deer drop-shadow-[0_4px_12px_rgba(132,250,176,0.3)] transition-transform hover:scale-110 hover:rotate-6">🦌</div>
+          <div className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-[#5d576b] to-[#7d778b] bg-clip-text text-transparent mb-1 tracking-wide">Deer MIS</div>
+          <div className="text-gray-400 text-sm md:text-base mb-8 md:mb-10 font-medium">台灣水鹿牧場管理系統</div>
 
-          <form onSubmit={handleSubmit} className="text-left space-y-6">
+          <form onSubmit={handleSubmit} className="text-left space-y-5 md:space-y-6">
             <div>
               <label className="block text-[#7d778b] mb-2 text-sm font-semibold pl-3 transition-colors">帳號</label>
-              <input type="text" value={username} onChange={e=>setUsername(e.target.value)} placeholder="請輸入帳號" required className="w-full px-6 py-4 border-2 border-gray-100 rounded-full text-base bg-gray-50 focus:outline-none focus:border-[#84fab0] focus:bg-white focus:ring-4 focus:ring-[#84fab0]/20 transition-all" />
+              <input type="text" value={username} onChange={e=>setUsername(e.target.value)} placeholder="請輸入帳號" required className="w-full px-5 py-3 md:px-6 md:py-4 border-2 border-gray-100 rounded-full text-base bg-gray-50 focus:outline-none focus:border-[#84fab0] focus:bg-white focus:ring-4 focus:ring-[#84fab0]/20 transition-all" />
             </div>
             <div>
               <label className="block text-[#7d778b] mb-2 text-sm font-semibold pl-3 transition-colors">密碼</label>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="請輸入密碼" required className="w-full px-6 py-4 border-2 border-gray-100 rounded-full text-base bg-gray-50 focus:outline-none focus:border-[#84fab0] focus:bg-white focus:ring-4 focus:ring-[#84fab0]/20 transition-all" />
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="請輸入密碼" required className="w-full px-5 py-3 md:px-6 md:py-4 border-2 border-gray-100 rounded-full text-base bg-gray-50 focus:outline-none focus:border-[#84fab0] focus:bg-white focus:ring-4 focus:ring-[#84fab0]/20 transition-all" />
             </div>
-            <button type="submit" className={`w-full py-4 mt-2 rounded-full text-lg font-bold text-white tracking-widest bg-gradient-to-br from-[#84fab0] to-[#8fd3f4] shadow-[0_8px_24px_rgba(132,250,176,0.3)] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(132,250,176,0.4)] active:scale-95 transition-all relative overflow-hidden btn-login ${isSubmitting ? 'opacity-80 pointer-events-none' : ''}`}>
+            <button type="submit" className={`w-full py-3 md:py-4 mt-2 rounded-full text-base md:text-lg font-bold text-white tracking-widest bg-gradient-to-br from-[#84fab0] to-[#8fd3f4] shadow-[0_8px_24px_rgba(132,250,176,0.3)] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(132,250,176,0.4)] active:scale-95 transition-all relative overflow-hidden btn-login ${isSubmitting ? 'opacity-80 pointer-events-none' : ''}`}>
               {isSubmitting ? '🌱 系統啟動中...' : '✨ 進入牧場'}
             </button>
           </form>
-          <div className="mt-8 text-xs text-gray-300 font-normal">© 2026 Deer MIS · 用心守護每一隻鹿</div>
+          <div className="mt-6 md:mt-8 text-xs text-gray-300 font-normal">© 2026 Deer MIS · 用心守護每一隻鹿</div>
         </div>
       </div>
     </div>
@@ -456,28 +502,28 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, onDel
   const todayStr = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-10 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-white relative overflow-hidden transition-transform hover:-translate-y-1 group">
+    <div className="space-y-6 md:space-y-8 animate-fade-in">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-white relative overflow-hidden transition-transform hover:-translate-y-1 group">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#84fab0] to-[#8fd3f4]"></div>
-        <h2 className="text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">👋 早安, {username}!</h2>
-        <p className="text-gray-500 font-medium text-lg">這裡是今日牧場概況 · {todayStr}</p>
+        <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2">👋 早安, {username}!</h2>
+        <p className="text-gray-500 font-medium text-sm md:text-lg">這裡是今日牧場概況 · {todayStr}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <MetricCard label="🦌 在養頭數" value={activeDeerCount} desc="正常運作" />
         <MetricCard label="💧 環境濕度" value="65.2" suffix="%" desc="適宜" />
         <MetricCard label="🌡️ 即時氣溫" value="28.5" suffix="°C" desc="舒適範圍" />
         <MetricCard label="💨 氨氣監測" value="5.2" suffix="ppm" desc="正常水平" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
-          <h3 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📊 環境趨勢分析</h3>
-          <div className="h-[350px] w-full"><canvas ref={chartRef}></canvas></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="lg:col-span-2 bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
+          <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50">📊 環境趨勢分析</h3>
+          <div className="h-[250px] md:h-[350px] w-full"><canvas ref={chartRef}></canvas></div>
         </div>
 
-        <div className="bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
-          <h3 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">🔔 系統通知</h3>
+        <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all">
+          <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50">🔔 系統通知</h3>
           <div className="space-y-4">
             <NotificationCard type="success" title="✅ 設備正常" desc="早上 09:00 自動餵料機運作正常" />
             <NotificationCard type="warning" title="📝 待辦提醒" desc="D-24004 號母鹿預產期接近 (剩 3 天)" />
@@ -486,11 +532,11 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, onDel
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100">
-        <h3 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📢 異常回報與追蹤</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+      <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100">
+        <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50">📢 異常回報與追蹤</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 md:gap-10">
           <div className="lg:col-span-2">
-            <h4 className="text-lg font-bold text-gray-700 mb-4">📝 新增問題回報</h4>
+            <h4 className="text-base md:text-lg font-bold text-gray-700 mb-4">📝 新增問題回報</h4>
             <form onSubmit={handleReportSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-600 mb-2">🦌 鹿隻編號 (ID)</label>
@@ -507,33 +553,33 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, onDel
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-600 mb-2">詳細描述</label>
-                <textarea rows="4" required value={reportData.description} onChange={e=>setReportData({...reportData, description: e.target.value})} placeholder="請描述觀察到的狀況..." className="w-full p-3 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-green-500 transition-all outline-none resize-y"></textarea>
+                <textarea rows="3" required value={reportData.description} onChange={e=>setReportData({...reportData, description: e.target.value})} placeholder="請描述觀察到的狀況..." className="w-full p-3 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-green-500 transition-all outline-none resize-y"></textarea>
               </div>
               <button type="submit" className="w-full bg-gradient-to-br from-green-500 to-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-green-500/30 hover:-translate-y-1 transition-all">送出回報</button>
             </form>
           </div>
           
           <div className="lg:col-span-3">
-            <h4 className="text-lg font-bold text-gray-700 mb-4">📋 最近回報紀錄</h4>
+            <h4 className="text-base md:text-lg font-bold text-gray-700 mb-4">📋 最近回報紀錄</h4>
             <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
-                    <th className="p-4 border-b-2 border-gray-200">日期</th>
-                    <th className="p-4 border-b-2 border-gray-200">鹿號</th>
-                    <th className="p-4 border-b-2 border-gray-200">類型</th>
-                    <th className="p-4 border-b-2 border-gray-200">描述</th>
-                    <th className="p-4 border-b-2 border-gray-200 text-center">操作/狀態</th>
+                  <tr className="bg-gray-50 text-gray-500 text-xs md:text-sm uppercase tracking-wider">
+                    <th className="p-3 md:p-4 border-b-2 border-gray-200">日期</th>
+                    <th className="p-3 md:p-4 border-b-2 border-gray-200">鹿號</th>
+                    <th className="p-3 md:p-4 border-b-2 border-gray-200">類型</th>
+                    <th className="p-3 md:p-4 border-b-2 border-gray-200 hidden sm:table-cell">描述</th>
+                    <th className="p-3 md:p-4 border-b-2 border-gray-200 text-center">操作/狀態</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 text-sm md:text-base">
                   {issueLogs.slice(0, 6).map((log, i) => (
                     <tr key={log.firebaseId || i} className="hover:bg-green-50/50 transition-colors">
-                      <td className="p-4 text-gray-600">{log.date}</td>
-                      <td className="p-4 font-bold text-gray-800">{log.deer_id}</td>
-                      <td className="p-4 text-gray-600">{log.issue_type}</td>
-                      <td className="p-4 text-gray-600 max-w-[150px] truncate" title={log.description}>{log.description}</td>
-                      <td className="p-4 text-center flex items-center justify-center gap-2 flex-wrap">
+                      <td className="p-3 md:p-4 text-gray-600">{log.date}</td>
+                      <td className="p-3 md:p-4 font-bold text-gray-800">{log.deer_id}</td>
+                      <td className="p-3 md:p-4 text-gray-600">{log.issue_type}</td>
+                      <td className="p-3 md:p-4 text-gray-600 hidden sm:table-cell max-w-[150px] truncate" title={log.description}>{log.description}</td>
+                      <td className="p-3 md:p-4 text-center flex items-center justify-center gap-2 flex-wrap">
                         {log.firebaseId ? (
                           <>
                             <select 
@@ -568,13 +614,13 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, onDel
 
 function MetricCard({ label, value, suffix, desc }) {
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_12px_35px_rgba(0,0,0,0.08)] transition-all">
+    <div className="bg-white rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100 relative overflow-hidden group hover:-translate-y-2 hover:shadow-[0_12px_35px_rgba(0,0,0,0.08)] transition-all">
       <div className="absolute inset-0 bg-gradient-to-br from-green-400/5 to-blue-400/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-      <div className="text-gray-500 font-bold mb-4 relative z-10">{label}</div>
-      <div className="text-4xl font-extrabold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2 relative z-10 tracking-tight">
-        {value} <span className="text-lg font-medium text-gray-400">{suffix}</span>
+      <div className="text-gray-500 font-bold mb-2 md:mb-4 relative z-10 text-sm md:text-base">{label}</div>
+      <div className="text-3xl md:text-4xl font-extrabold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mb-1 md:mb-2 relative z-10 tracking-tight">
+        {value} <span className="text-base md:text-lg font-medium text-gray-400">{suffix}</span>
       </div>
-      <div className="text-sm text-gray-400 font-medium relative z-10">{desc}</div>
+      <div className="text-xs md:text-sm text-gray-400 font-medium relative z-10">{desc}</div>
     </div>
   );
 }
@@ -586,9 +632,9 @@ function NotificationCard({ type, title, desc }) {
     info: 'border-blue-400 bg-gradient-to-br from-white to-blue-50'
   };
   return (
-    <div className={`p-4 rounded-2xl border-l-4 shadow-sm hover:translate-x-2 transition-transform ${colors[type]}`}>
-      <div className="font-bold text-gray-800 mb-1">{title}</div>
-      <div className="text-gray-500 text-sm leading-relaxed">{desc}</div>
+    <div className={`p-4 rounded-xl md:rounded-2xl border-l-4 shadow-sm hover:translate-x-2 transition-transform ${colors[type]}`}>
+      <div className="font-bold text-gray-800 mb-1 text-sm md:text-base">{title}</div>
+      <div className="text-gray-500 text-xs md:text-sm leading-relaxed">{desc}</div>
     </div>
   );
 }
@@ -633,6 +679,7 @@ function DeerProfiles({ deerList, onAdd, onUpdate, onDelete }) {
       antler_grade: deer.antler_grade || 'A'
     });
     setEditingId(deer.firebaseId);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // 編輯時滾動至頂部表單
   };
 
   const handleCancelEdit = () => {
@@ -642,45 +689,45 @@ function DeerProfiles({ deerList, onAdd, onUpdate, onDelete }) {
 
   return (
     <div className="animate-fade-in">
-      <div className="bg-white rounded-[20px] p-8 mb-8 shadow-sm flex justify-between items-center border border-gray-100">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">📋 鹿隻數位身分證</h1>
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-6 py-2 rounded-full font-bold shadow-md">🦌 總計 {deerList.length} 頭</div>
+      <div className="bg-white rounded-[20px] p-6 md:p-8 mb-6 md:mb-8 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-gray-100">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">📋 鹿隻數位身分證</h1>
+        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white px-5 py-2 rounded-full font-bold shadow-md text-sm md:text-base">🦌 總計 {deerList.length} 頭</div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[450px_1fr] gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] xl:grid-cols-[450px_1fr] gap-6 md:gap-8 items-start">
         {/* Registration/Edit Form */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50 flex items-center gap-2">
+        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 lg:sticky top-[90px]">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50 flex items-center gap-2">
             {editingId ? '✏️ 編輯鹿隻資料' : '➕ 鹿隻入籍登記'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-500 my-4 before:content-[''] before:flex-1 before:h-px before:bg-gray-200 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">📝 基本識別資料</div>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-gray-500 my-4 before:content-[''] before:flex-1 before:h-px before:bg-gray-200 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">📝 基本識別資料</div>
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🏷️ 牧場編號 (ID)</label><input type="text" required value={formData.deer_id} onChange={e=>setFormData({...formData, deer_id: e.target.value})} placeholder="如：D-11201" className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none transition-colors" /></div>
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🎫 官方耳標號</label><input type="text" value={formData.ear_tag} onChange={e=>setFormData({...formData, ear_tag: e.target.value})} placeholder="防疫耳標" className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none transition-colors" /></div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🧬 品種</label><select value={formData.breed} onChange={e=>setFormData({...formData, breed: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none"><option>台灣水鹿</option><option>紅鹿</option><option>梅花鹿</option><option>雜交種</option></select></div>
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">⚧️ 性別</label><select value={formData.sex} onChange={e=>setFormData({...formData, sex: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none"><option value="M">公 (Male)</option><option value="F">母 (Female)</option></select></div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-500 my-4 before:content-[''] before:flex-1 before:h-px before:bg-gray-200 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">🧬 血統與來源</div>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-gray-500 my-4 before:content-[''] before:flex-1 before:h-px before:bg-gray-200 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">🧬 血統與來源</div>
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">👨 父系編號</label><input type="text" value={formData.sire_id} onChange={e=>setFormData({...formData, sire_id: e.target.value})} placeholder="選填" className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none" /></div>
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">👩 母系編號</label><input type="text" value={formData.dam_id} onChange={e=>setFormData({...formData, dam_id: e.target.value})} placeholder="選填" className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none" /></div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">📥 來源</label><select value={formData.source} onChange={e=>setFormData({...formData, source: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none"><option>場內自繁</option><option>外部購入</option></select></div>
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🎯 飼養用途</label><select value={formData.purpose} onChange={e=>setFormData({...formData, purpose: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none"><option>採茸用</option><option>種鹿繁殖</option><option>肉用</option></select></div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm font-bold text-gray-500 my-4 before:content-[''] before:flex-1 before:h-px before:bg-gray-200 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">📅 現況資料</div>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-gray-500 my-4 before:content-[''] before:flex-1 before:h-px before:bg-gray-200 after:content-[''] after:flex-1 after:h-px after:bg-gray-200">📅 現況資料</div>
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🎂 出生日期</label><input type="date" required value={formData.birth_date} onChange={e=>setFormData({...formData, birth_date: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none" /></div>
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🏠 所在欄位</label><input type="text" value={formData.pen_id} onChange={e=>setFormData({...formData, pen_id: e.target.value})} placeholder="如：A-01" className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none" /></div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-sm font-bold text-gray-600 mb-1">📊 目前狀態</label>
                 <select required value={formData.status} onChange={e=>setFormData({...formData, status: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl focus:border-indigo-400 outline-none"><option value="Active">🟢 在養 (Active)</option><option value="Sold">🔵 已售 (Sold)</option><option value="Dead">🔴 死亡 (Dead)</option><option value="Quarantine">🟡 隔離中 (Quarantine)</option></select>
@@ -706,44 +753,44 @@ function DeerProfiles({ deerList, onAdd, onUpdate, onDelete }) {
         </div>
 
         {/* Deer Table */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 overflow-hidden">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50 flex items-center gap-2">🔍 鹿籍總表</h2>
-          <div className="overflow-x-auto h-[700px] overflow-y-auto pr-2">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-sm border border-gray-100 overflow-hidden w-full">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50 flex items-center gap-2">🔍 鹿籍總表</h2>
+          <div className="overflow-x-auto lg:h-[750px] lg:overflow-y-auto">
+            <table className="w-full text-left border-collapse min-w-[600px]">
+              <thead className="bg-gray-50 lg:sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">編號 / 耳標</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">品種 / 性別</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">親代 / 出生</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">欄位</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">狀態</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase text-center">操作</th>
+                  <th className="p-3 md:p-4 text-gray-600 font-bold text-xs md:text-sm uppercase">編號 / 耳標</th>
+                  <th className="p-3 md:p-4 text-gray-600 font-bold text-xs md:text-sm uppercase">品種 / 性別</th>
+                  <th className="p-3 md:p-4 text-gray-600 font-bold text-xs md:text-sm uppercase hidden sm:table-cell">親代 / 出生</th>
+                  <th className="p-3 md:p-4 text-gray-600 font-bold text-xs md:text-sm uppercase">欄位</th>
+                  <th className="p-3 md:p-4 text-gray-600 font-bold text-xs md:text-sm uppercase">狀態</th>
+                  <th className="p-3 md:p-4 text-gray-600 font-bold text-xs md:text-sm uppercase text-center">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 text-sm md:text-base">
                 {deerList.map((row, i) => (
                   <tr key={row.firebaseId || i} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4">
-                      <div className="font-extrabold text-gray-800 text-lg">{row.id || row.deer_id}</div>
+                    <td className="p-3 md:p-4">
+                      <div className="font-extrabold text-gray-800 text-base md:text-lg">{row.id || row.deer_id}</div>
                       {row.ear_tag && <div className="inline-block px-2 py-0.5 mt-1 bg-gray-100 border border-gray-200 rounded text-xs font-mono text-gray-600">{row.ear_tag}</div>}
                     </td>
-                    <td className="p-4">
+                    <td className="p-3 md:p-4">
                       <div className="font-bold text-gray-600 mb-1">{row.breed}</div>
-                      {row.sex === 'M' ? <span className="text-blue-700 font-bold text-sm">♂ 公鹿</span> : <span className="text-pink-700 font-bold text-sm">♀ 母鹿</span>}
+                      {row.sex === 'M' ? <span className="text-blue-700 font-bold text-xs md:text-sm">♂ 公鹿</span> : <span className="text-pink-700 font-bold text-xs md:text-sm">♀ 母鹿</span>}
                     </td>
-                    <td className="p-4">
-                      <div className="text-sm text-gray-500 leading-relaxed mb-1">♂: {row.sire_id || '-'}<br/>♀: {row.dam_id || '-'}</div>
+                    <td className="p-3 md:p-4 hidden sm:table-cell">
+                      <div className="text-xs md:text-sm text-gray-500 leading-relaxed mb-1">♂: {row.sire_id || '-'}<br/>♀: {row.dam_id || '-'}</div>
                       <div className="text-xs font-bold text-indigo-500">{row.birth_date}</div>
                     </td>
-                    <td className="p-4 font-bold text-gray-800">{row.current_pen_id || row.pen_id || '-'}</td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-bold ${row.status === 'Active' ? 'bg-green-100 text-green-800' : row.status === 'Quarantine' ? 'bg-yellow-100 text-yellow-800' : row.status === 'Sold' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>{row.status}</span>
+                    <td className="p-3 md:p-4 font-bold text-gray-800">{row.current_pen_id || row.pen_id || '-'}</td>
+                    <td className="p-3 md:p-4">
+                      <span className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-bold whitespace-nowrap ${row.status === 'Active' ? 'bg-green-100 text-green-800' : row.status === 'Quarantine' ? 'bg-yellow-100 text-yellow-800' : row.status === 'Sold' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>{row.status}</span>
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 md:p-4 text-center">
                       {row.firebaseId && (
-                        <div className="flex flex-wrap gap-2 justify-center">
-                          <button onClick={() => handleEdit(row)} className="text-indigo-500 hover:text-indigo-700 font-bold text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded transition-colors">修改</button>
-                          <button onClick={() => onDelete(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors">刪除</button>
+                        <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
+                          <button onClick={() => handleEdit(row)} className="text-indigo-500 hover:text-indigo-700 font-bold text-xs md:text-sm bg-indigo-50 hover:bg-indigo-100 px-2 sm:px-3 py-1 rounded transition-colors">修改</button>
+                          <button onClick={() => onDelete(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-xs md:text-sm bg-red-50 hover:bg-red-100 px-2 sm:px-3 py-1 rounded transition-colors">刪除</button>
                         </div>
                       )}
                     </td>
@@ -777,29 +824,29 @@ function Feeding({ feedLogs, onAddFeed, onDeleteFeed, username }) {
 
   return (
     <div className="animate-fade-in">
-      <div className="bg-white rounded-[20px] p-8 mb-8 shadow-sm flex flex-col items-start border border-gray-100">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">🌾 飼養管理日誌</h1>
+      <div className="bg-white rounded-[20px] p-6 md:p-8 mb-6 md:mb-8 shadow-sm flex flex-col items-start border border-gray-100">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">🌾 飼養管理日誌</h1>
         <div className="text-gray-500 text-sm">精準飼養 · 成本控管 · 健康追蹤</div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[450px_1fr] gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] xl:grid-cols-[450px_1fr] gap-6 md:gap-8 items-start">
         {/* Feeding Form */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📝 新增餵食紀錄</h2>
+        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 lg:sticky top-[90px]">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50">📝 新增餵食紀錄</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">⏰ 餵食時段</label><select value={formData.feed_period} onChange={e=>setFormData({...formData, feed_period: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-green-500"><option value="AM">☀️ 晨間 (AM)</option><option value="PM">🌙 傍晚 (PM)</option><option value="Add">➕ 額外補料</option></select></div>
               <div className="flex-1"><label className="block text-sm font-bold text-gray-600 mb-1">🌦️ 當下天氣</label><select value={formData.weather} onChange={e=>setFormData({...formData, weather: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-green-500"><option>晴</option><option>陰</option><option>雨</option><option>熱</option><option>寒</option></select></div>
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-600 mb-1">🎯 對象群體 / 欄位</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                 <select value={formData.target_group} onChange={e=>setFormData({...formData, target_group: e.target.value})} className="flex-1 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-green-500"><option>全場</option><option>公鹿區</option><option>母鹿區</option><option>仔鹿區</option><option>隔離區</option></select>
                 <input type="text" value={formData.area_id} onChange={e=>setFormData({...formData, area_id: e.target.value})} placeholder="指定欄號" className="flex-1 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-green-500" />
               </div>
             </div>
             <div><label className="block text-sm font-bold text-gray-600 mb-1">🍲 飼料內容</label><select value={formData.feed_content} onChange={e=>setFormData({...formData, feed_content: e.target.value})} className="w-full p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-green-500"><option>TMR</option><option>青割玉米</option><option>牧草</option><option>精料</option><option>酒粕</option></select></div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 relative">
                 <label className="block text-sm font-bold text-gray-600 mb-1">⚖️ 投餵量</label>
                 <input type="number" step="0.1" required value={formData.amount} onChange={e=>setFormData({...formData, amount: e.target.value})} placeholder="0.0" className="w-full p-2.5 pr-8 border-2 border-gray-200 rounded-xl outline-none focus:border-green-500" />
@@ -815,9 +862,9 @@ function Feeding({ feedLogs, onAddFeed, onDeleteFeed, username }) {
             <button type="submit" className="w-full bg-gradient-to-br from-green-500 to-green-600 text-white font-bold py-3 rounded-xl shadow-lg hover:-translate-y-0.5 transition-transform mt-4">✅ 記錄存檔</button>
           </form>
 
-          <div className="bg-blue-50 rounded-xl p-5 mt-8 border-l-4 border-blue-400">
+          <div className="bg-blue-50 rounded-xl p-4 md:p-5 mt-6 md:mt-8 border-l-4 border-blue-400 hidden sm:block">
             <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">📚 飼養管理參考指標</h4>
-            <ul className="text-sm text-blue-900 list-disc pl-5 space-y-1">
+            <ul className="text-xs md:text-sm text-blue-900 list-disc pl-4 space-y-1">
               <li><strong>DMI</strong>：若剩料過多(&gt;5-10%)，應減少投餵以免浪費。</li>
               <li><strong>天氣影響</strong>：氣溫超過 28°C 時，建議在涼爽時段增加餵食比例。</li>
               <li><strong>階段營養</strong>：公鹿長茸期需高蛋白(16-18%)，母鹿泌乳期需高能量。</li>
@@ -826,40 +873,40 @@ function Feeding({ feedLogs, onAddFeed, onDeleteFeed, username }) {
         </div>
 
         {/* Feeding Table */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 overflow-hidden">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📊 近期飼養紀錄</h2>
-          <div className="overflow-x-auto h-[700px] overflow-y-auto pr-2">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-green-50 border-b-2 border-green-100 sticky top-0 z-10">
+        <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-sm border border-gray-100 overflow-hidden w-full">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50">📊 近期飼養紀錄</h2>
+          <div className="overflow-x-auto lg:h-[750px] lg:overflow-y-auto pr-2">
+            <table className="w-full text-left border-collapse min-w-[500px]">
+              <thead className="bg-green-50 border-b-2 border-green-100 lg:sticky top-0 z-10">
                 <tr>
-                  <th className="p-4 text-green-800 font-bold text-sm">時間/天氣</th>
-                  <th className="p-4 text-green-800 font-bold text-sm">群體/欄位</th>
-                  <th className="p-4 text-green-800 font-bold text-sm">飼料</th>
-                  <th className="p-4 text-green-800 font-bold text-sm">投餵 / 剩料</th>
-                  <th className="p-4 text-green-800 font-bold text-sm">備註</th>
-                  <th className="p-4 text-green-800 font-bold text-sm text-center">操作</th>
+                  <th className="p-3 md:p-4 text-green-800 font-bold text-xs md:text-sm">時間/天氣</th>
+                  <th className="p-3 md:p-4 text-green-800 font-bold text-xs md:text-sm">群體/欄位</th>
+                  <th className="p-3 md:p-4 text-green-800 font-bold text-xs md:text-sm">飼料</th>
+                  <th className="p-3 md:p-4 text-green-800 font-bold text-xs md:text-sm">投餵 / 剩料</th>
+                  <th className="p-3 md:p-4 text-green-800 font-bold text-xs md:text-sm hidden sm:table-cell">備註</th>
+                  <th className="p-3 md:p-4 text-green-800 font-bold text-xs md:text-sm text-center">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 text-sm md:text-base">
                 {feedLogs.map((row, i) => (
                   <tr key={row.firebaseId || i} className="hover:bg-gray-50">
-                    <td className="p-4">
+                    <td className="p-3 md:p-4">
                       <div className="text-gray-800 font-bold break-words">{row.feed_time}</div>
                       <div className="mt-1 flex items-center flex-wrap gap-2">
                         <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${row.feed_period==='AM' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>{row.feed_period}</span>
                         <span className="text-xs text-gray-500">{row.weather}</span>
                       </div>
                     </td>
-                    <td className="p-4"><div className="font-bold text-gray-700">{row.target_group}</div><div className="text-xs text-gray-500">{row.area_id || '-'}</div></td>
-                    <td className="p-4 text-gray-700 break-words">{row.feed_content}</td>
-                    <td className="p-4">
+                    <td className="p-3 md:p-4"><div className="font-bold text-gray-700">{row.target_group}</div><div className="text-xs text-gray-500">{row.area_id || '-'}</div></td>
+                    <td className="p-3 md:p-4 text-gray-700 break-words">{row.feed_content}</td>
+                    <td className="p-3 md:p-4">
                       <div className="text-green-700 font-bold">+{row.given_amount_kg} kg</div>
                       {row.leftover_amount_kg > 0 && <div className="text-red-600 text-xs">剩 {row.leftover_amount_kg} kg</div>}
                     </td>
-                    <td className="p-4 text-sm text-gray-600 max-w-[120px] truncate" title={row.note}>{row.note || '-'}</td>
-                    <td className="p-4 text-center">
+                    <td className="p-3 md:p-4 text-sm text-gray-600 hidden sm:table-cell max-w-[120px] truncate" title={row.note}>{row.note || '-'}</td>
+                    <td className="p-3 md:p-4 text-center">
                       {row.firebaseId && (
-                        <button onClick={() => onDeleteFeed(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors">刪除</button>
+                        <button onClick={() => onDeleteFeed(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-xs md:text-sm bg-red-50 hover:bg-red-100 px-2 md:px-3 py-1 rounded transition-colors">刪除</button>
                       )}
                     </td>
                   </tr>
@@ -1044,10 +1091,12 @@ function DigitalTwin({ deerList, setCurrentPage }) {
 
       const raycaster = new THREE.Raycaster();
       const mouse = new THREE.Vector2();
-      renderer.domElement.addEventListener('click', (e) => {
+      
+      // Support Touch for mobile
+      const handleInteraction = (clientX, clientY) => {
         const rect = renderer.domElement.getBoundingClientRect();
-        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(deerMeshes, true);
         if (intersects.length > 0) {
@@ -1060,7 +1109,12 @@ function DigitalTwin({ deerList, setCurrentPage }) {
         } else {
           setSelectedDeer(null);
         }
-      });
+      };
+
+      renderer.domElement.addEventListener('click', (e) => handleInteraction(e.clientX, e.clientY));
+      renderer.domElement.addEventListener('touchstart', (e) => {
+          if (e.touches.length > 0) handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
 
       const animate = () => {
         animationId = requestAnimationFrame(animate);
@@ -1093,27 +1147,27 @@ function DigitalTwin({ deerList, setCurrentPage }) {
   return (
     <div className="animate-fade-in">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">🦌 室內數位影子鹿舍 (Digital Twin)</h1>
-        <p className="text-gray-500 text-sm">目前場內共有 <b>{deerList.filter(d=>d.status==='Active').length}</b> 頭水鹿 · 點擊 3D 模型查看即時數據與鹿茸分級</p>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">🦌 室內數位影子鹿舍 (Digital Twin)</h1>
+        <p className="text-gray-500 text-xs md:text-sm">目前場內共有 <b>{deerList.filter(d=>d.status==='Active').length}</b> 頭水鹿 · 點擊 3D 模型查看即時數據</p>
       </div>
 
-      <div className="relative w-full h-[75vh] bg-white rounded-3xl overflow-hidden shadow-sm border-2 border-gray-100">
+      <div className="relative w-full h-[60vh] sm:h-[75vh] bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-sm border-2 border-gray-100">
         {loading && (
           <div className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 border-4 border-gray-100 border-t-green-500 rounded-full animate-spin mb-4"></div>
-            <div className="text-green-600 font-bold">正在載入 3D 牧場模型...</div>
+            <div className="w-10 md:w-12 h-10 md:h-12 border-4 border-gray-100 border-t-green-500 rounded-full animate-spin mb-4"></div>
+            <div className="text-green-600 font-bold text-sm md:text-base">正在載入 3D 牧場模型...</div>
           </div>
         )}
         <div ref={containerRef} className="w-full h-full cursor-pointer"></div>
 
-        <div className={`absolute top-6 left-6 w-[340px] bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-200 transition-transform duration-300 ease-[cubic-bezier(0.175,0.885,0.32,1.15)] z-10 ${selectedDeer ? 'translate-x-0' : '-translate-x-[120%]'}`}>
-          <button onClick={() => setSelectedDeer(null)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl leading-none">✕</button>
+        <div className={`absolute top-4 sm:top-6 left-4 sm:left-6 w-[calc(100%-2rem)] sm:w-[340px] max-w-[340px] bg-white/95 backdrop-blur-md p-5 sm:p-6 rounded-2xl shadow-xl border border-gray-200 transition-transform duration-300 ease-[cubic-bezier(0.175,0.885,0.32,1.15)] z-10 ${selectedDeer ? 'translate-x-0' : '-translate-x-[120%]'}`}>
+          <button onClick={() => setSelectedDeer(null)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-xl md:text-2xl leading-none">✕</button>
           {selectedDeer && (
             <>
-              <div className="text-2xl font-black text-gray-900 mb-3">{selectedDeer.id || selectedDeer.deer_id}</div>
+              <div className="text-xl md:text-2xl font-black text-gray-900 mb-3">{selectedDeer.id || selectedDeer.deer_id}</div>
               <hr className="border-t border-dashed border-gray-300 mb-4" />
               
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between"><span className="font-bold text-gray-500">🧬 品種/性別</span><span className="font-bold text-gray-800">{selectedDeer.breed} {selectedDeer.sex==='M'?'♂':'♀'}</span></div>
                 <div className="flex justify-between"><span className="font-bold text-gray-500">🏠 所在欄位</span><span className="font-bold text-gray-800">{selectedDeer.current_pen_id || selectedDeer.pen_id || '--'}</span></div>
                 <div className="flex justify-between"><span className="font-bold text-gray-500">⚖️ 最新體重</span><span className="font-bold text-gray-800">180.2 kg</span></div>
@@ -1125,8 +1179,8 @@ function DigitalTwin({ deerList, setCurrentPage }) {
               </div>
 
               {selectedDeer.sex === 'M' && (
-                <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300">
-                  <div className="font-black text-gray-800 mb-2 flex items-center gap-2">
+                <div className="mt-4 p-3 sm:p-4 rounded-xl bg-gray-50 border border-dashed border-gray-300">
+                  <div className="font-black text-gray-800 mb-2 flex items-center gap-2 text-sm sm:text-base">
                     🦌 鹿茸分級 
                     <span className="bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full text-xs border border-gray-300">
                       {ANTLER_GRADE_MAP[selectedDeer.antler_grade || 'A']?.label.split('（')[0] || 'A'}
@@ -1139,7 +1193,7 @@ function DigitalTwin({ deerList, setCurrentPage }) {
                 </div>
               )}
               <div className="mt-5 text-center">
-                <button onClick={() => setCurrentPage('deer_profiles')} className="text-teal-600 font-bold text-sm hover:underline">查看完整履歷 &rarr;</button>
+                <button onClick={() => setCurrentPage('deer_profiles')} className="text-teal-600 font-bold text-xs sm:text-sm hover:underline">查看完整履歷 &rarr;</button>
               </div>
             </>
           )}
@@ -1251,26 +1305,26 @@ function Environment() {
   }, []);
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <div className="animate-fade-in space-y-4 md:space-y-6">
       {/* 科技感標頭區塊 */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 shadow-xl flex flex-col md:flex-row justify-between items-center text-white border border-gray-700 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-center text-white border border-gray-700 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-green-500 rounded-full mix-blend-overlay filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="relative z-10">
-          <h1 className="text-3xl font-bold flex items-center gap-3 tracking-wide">📡 環境監控數位儀表板</h1>
-          <p className="text-gray-400 mt-2 font-medium">IoT 感測器即時連線與分析中心</p>
+        <div className="relative z-10 text-center md:text-left">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center justify-center md:justify-start gap-3 tracking-wide">📡 環境監控數位儀表板</h1>
+          <p className="text-gray-400 mt-2 font-medium text-sm md:text-base">IoT 感測器即時連線與分析中心</p>
         </div>
-        <div className="relative z-10 text-right mt-6 md:mt-0 bg-gray-800/80 p-5 rounded-2xl border border-gray-600 shadow-inner">
-          <div className="text-4xl font-black font-mono text-green-400 tracking-wider drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]">
+        <div className="relative z-10 text-center mt-6 md:mt-0 bg-gray-800/80 p-4 md:p-5 rounded-2xl border border-gray-600 shadow-inner">
+          <div className="text-3xl md:text-4xl font-black font-mono text-green-400 tracking-wider drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]">
             {time.toLocaleTimeString('zh-TW', {hour12: false})}
           </div>
-          <div className="text-sm font-bold text-gray-400 mt-2">
+          <div className="text-xs md:text-sm font-bold text-gray-400 mt-1 md:mt-2">
             {time.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
           </div>
         </div>
       </div>
 
       {/* 數位數值卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <EnvCard title="🌡️ 即時溫度" value={sensorData.temp} unit="°C" status={sensorData.temp > 32 ? 'critical' : sensorData.temp < 15 ? 'warning' : 'normal'} />
         <EnvCard title="💧 相對濕度" value={sensorData.hum} unit="%" status={sensorData.hum > 85 ? 'warning' : 'normal'} />
         <EnvCard title="💨 氨氣濃度 (NH3)" value={sensorData.nh3} unit="ppm" status={sensorData.nh3 > 15 ? 'critical' : sensorData.nh3 > 8 ? 'warning' : 'normal'} />
@@ -1278,12 +1332,12 @@ function Environment() {
       </div>
 
       {/* 動態折線圖區塊 */}
-      <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-         <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50 flex justify-between items-center">
+      <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+         <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 pb-4 border-b-2 border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <span>📈 感測器歷史趨勢圖</span>
-            <span className="flex items-center gap-2 text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> 即時更新中</span>
+            <span className="flex items-center gap-2 text-xs md:text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> 即時更新中</span>
          </h2>
-         <div className="h-[450px] w-full"><canvas ref={chartRef}></canvas></div>
+         <div className="h-[300px] md:h-[450px] w-full"><canvas ref={chartRef}></canvas></div>
       </div>
     </div>
   );
@@ -1300,13 +1354,13 @@ function EnvCard({ title, value, unit, status }) {
   const currentStyle = styles[status];
 
   return (
-    <div className={`rounded-3xl p-6 shadow-sm border relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md ${currentStyle.bg} ${currentStyle.border}`}>
-       <div className="text-gray-600 font-bold mb-3 relative z-10 text-sm">{title}</div>
+    <div className={`rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-sm border relative overflow-hidden transition-all hover:-translate-y-1 hover:shadow-md ${currentStyle.bg} ${currentStyle.border}`}>
+       <div className="text-gray-600 font-bold mb-2 md:mb-3 relative z-10 text-xs md:text-sm">{title}</div>
        <div className="flex items-baseline gap-2 relative z-10">
-          <span className={`text-5xl font-black tracking-tight font-mono ${currentStyle.text}`}>{value}</span>
-          <span className="text-lg font-bold text-gray-500">{unit}</span>
+          <span className={`text-4xl md:text-5xl font-black tracking-tight font-mono ${currentStyle.text}`}>{value}</span>
+          <span className="text-base md:text-lg font-bold text-gray-500">{unit}</span>
        </div>
-       <div className={`absolute -right-6 -bottom-6 w-32 h-32 rounded-full opacity-20 bg-gradient-to-br ${currentStyle.glow} blur-xl`}></div>
+       <div className={`absolute -right-6 -bottom-6 w-24 h-24 md:w-32 md:h-32 rounded-full opacity-20 bg-gradient-to-br ${currentStyle.glow} blur-xl`}></div>
     </div>
   );
 }
