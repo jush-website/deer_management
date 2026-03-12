@@ -265,11 +265,11 @@ export default function App() {
         </nav>
 
         {/* Main Content Area */}
-        <main className="max-w-[1400px] mx-auto p-8 animate-fade-in">
-          {/* Flash Messages */}
-          <div className="mb-6 space-y-3 relative z-50">
+        <main className="max-w-[1400px] mx-auto p-8 animate-fade-in relative">
+          {/* Flash Messages - 移到外層並設定 fixed 確保永遠在最上方 */}
+          <div className="fixed top-[80px] right-8 z-[100] flex flex-col gap-3 pointer-events-none">
             {flashes.map(f => (
-              <div key={f.id} className={`flex items-center p-4 rounded-xl shadow-sm bg-white border-l-4 font-medium animate-slide-in ${f.type === 'success' ? 'border-green-500 text-green-800' : f.type === 'error' ? 'border-red-500 text-red-800' : 'border-blue-500 text-blue-800'}`}>
+              <div key={f.id} className={`flex items-center p-4 rounded-xl shadow-lg bg-white border-l-4 font-medium animate-slide-in pointer-events-auto ${f.type === 'success' ? 'border-green-500 text-green-800' : f.type === 'error' ? 'border-red-500 text-red-800' : 'border-blue-500 text-blue-800'}`}>
                 <span className="mr-3">{f.type === 'success' ? '✅' : f.type === 'error' ? '❌' : 'ℹ️'}</span>
                 {f.message}
               </div>
@@ -516,24 +516,24 @@ function Dashboard({ deerList, issueLogs, onAddIssue, onUpdateIssueStatus, onDel
           <div className="lg:col-span-3">
             <h4 className="text-lg font-bold text-gray-700 mb-4">📋 最近回報紀錄</h4>
             <div className="overflow-x-auto bg-white rounded-xl border border-gray-100">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
-                    <th className="p-4 border-b-2 border-gray-200">日期</th>
-                    <th className="p-4 border-b-2 border-gray-200">鹿號</th>
-                    <th className="p-4 border-b-2 border-gray-200">類型</th>
-                    <th className="p-4 border-b-2 border-gray-200">描述</th>
-                    <th className="p-4 border-b-2 border-gray-200 text-center">操作/狀態</th>
+                    <th className="px-6 py-4 border-b-2 border-gray-200">日期</th>
+                    <th className="px-6 py-4 border-b-2 border-gray-200">鹿號</th>
+                    <th className="px-6 py-4 border-b-2 border-gray-200">類型</th>
+                    <th className="px-6 py-4 border-b-2 border-gray-200">描述</th>
+                    <th className="px-6 py-4 border-b-2 border-gray-200 text-center">操作/狀態</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {issueLogs.slice(0, 6).map((log, i) => (
                     <tr key={log.firebaseId || i} className="hover:bg-green-50/50 transition-colors">
-                      <td className="p-4 text-gray-600">{log.date}</td>
-                      <td className="p-4 font-bold text-gray-800">{log.deer_id}</td>
-                      <td className="p-4 text-gray-600">{log.issue_type}</td>
-                      <td className="p-4 text-gray-600 max-w-[150px] truncate" title={log.description}>{log.description}</td>
-                      <td className="p-4 text-center flex items-center justify-center gap-2">
+                      <td className="px-6 py-4 text-gray-600">{log.date}</td>
+                      <td className="px-6 py-4 font-bold text-gray-800">{log.deer_id}</td>
+                      <td className="px-6 py-4 text-gray-600">{log.issue_type}</td>
+                      <td className="px-6 py-4 text-gray-600 max-w-[150px] truncate" title={log.description}>{log.description}</td>
+                      <td className="px-6 py-4 text-center flex items-center justify-center gap-2">
                         {log.firebaseId ? (
                           <>
                             <select 
@@ -709,37 +709,37 @@ function DeerProfiles({ deerList, onAdd, onUpdate, onDelete }) {
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50 flex items-center gap-2">🔍 鹿籍總表</h2>
           <div className="overflow-x-auto h-[700px] overflow-y-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">編號 / 耳標</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">品種 / 性別</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">親代 / 出生</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">欄位</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase">狀態</th>
-                  <th className="p-4 text-gray-600 font-bold text-sm uppercase text-center">操作</th>
+                  <th className="px-6 py-4 text-gray-600 font-bold text-sm uppercase">編號 / 耳標</th>
+                  <th className="px-6 py-4 text-gray-600 font-bold text-sm uppercase">品種 / 性別</th>
+                  <th className="px-6 py-4 text-gray-600 font-bold text-sm uppercase">親代 / 出生</th>
+                  <th className="px-6 py-4 text-gray-600 font-bold text-sm uppercase">欄位</th>
+                  <th className="px-6 py-4 text-gray-600 font-bold text-sm uppercase">狀態</th>
+                  <th className="px-6 py-4 text-gray-600 font-bold text-sm uppercase text-center">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {deerList.map((row, i) => (
                   <tr key={row.firebaseId || i} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4">
+                    <td className="px-6 py-4">
                       <div className="font-extrabold text-gray-800 text-lg">{row.id || row.deer_id}</div>
                       {row.ear_tag && <div className="inline-block px-2 py-0.5 mt-1 bg-gray-100 border border-gray-200 rounded text-xs font-mono text-gray-600">{row.ear_tag}</div>}
                     </td>
-                    <td className="p-4">
+                    <td className="px-6 py-4">
                       <div className="font-bold text-gray-600 mb-1">{row.breed}</div>
                       {row.sex === 'M' ? <span className="text-blue-700 font-bold text-sm">♂ 公鹿</span> : <span className="text-pink-700 font-bold text-sm">♀ 母鹿</span>}
                     </td>
-                    <td className="p-4">
+                    <td className="px-6 py-4">
                       <div className="text-sm text-gray-500 leading-relaxed mb-1">♂: {row.sire_id || '-'}<br/>♀: {row.dam_id || '-'}</div>
                       <div className="text-xs font-bold text-indigo-500">{row.birth_date}</div>
                     </td>
-                    <td className="p-4 font-bold text-gray-800">{row.current_pen_id || row.pen_id || '-'}</td>
-                    <td className="p-4">
+                    <td className="px-6 py-4 font-bold text-gray-800">{row.current_pen_id || row.pen_id || '-'}</td>
+                    <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-sm font-bold ${row.status === 'Active' ? 'bg-green-100 text-green-800' : row.status === 'Quarantine' ? 'bg-yellow-100 text-yellow-800' : row.status === 'Sold' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>{row.status}</span>
                     </td>
-                    <td className="p-4 text-center">
+                    <td className="px-6 py-4 text-center">
                       {row.firebaseId && (
                         <div className="flex gap-2 justify-center">
                           <button onClick={() => handleEdit(row)} className="text-indigo-500 hover:text-indigo-700 font-bold text-sm bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded transition-colors">修改</button>
@@ -829,33 +829,33 @@ function Feeding({ feedLogs, onAddFeed, onDeleteFeed, username }) {
         <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-6 pb-4 border-b-2 border-gray-50">📊 近期飼養紀錄</h2>
           <div className="overflow-x-auto h-[700px] overflow-y-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead className="bg-green-50 border-b-2 border-green-100 sticky top-0 z-10">
                 <tr>
-                  <th className="p-3 text-green-800 font-bold text-sm">時間/天氣</th>
-                  <th className="p-3 text-green-800 font-bold text-sm">群體/欄位</th>
-                  <th className="p-3 text-green-800 font-bold text-sm">飼料</th>
-                  <th className="p-3 text-green-800 font-bold text-sm">投餵 / 剩料</th>
-                  <th className="p-3 text-green-800 font-bold text-sm">備註</th>
-                  <th className="p-3 text-green-800 font-bold text-sm text-center">操作</th>
+                  <th className="px-6 py-4 text-green-800 font-bold text-sm">時間/天氣</th>
+                  <th className="px-6 py-4 text-green-800 font-bold text-sm">群體/欄位</th>
+                  <th className="px-6 py-4 text-green-800 font-bold text-sm">飼料</th>
+                  <th className="px-6 py-4 text-green-800 font-bold text-sm">投餵 / 剩料</th>
+                  <th className="px-6 py-4 text-green-800 font-bold text-sm">備註</th>
+                  <th className="px-6 py-4 text-green-800 font-bold text-sm text-center">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {feedLogs.map((row, i) => (
                   <tr key={row.firebaseId || i} className="hover:bg-gray-50">
-                    <td className="p-3">
+                    <td className="px-6 py-4">
                       <div className="text-gray-800 font-bold">{row.feed_time}</div>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mt-1 ${row.feed_period==='AM' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}`}>{row.feed_period}</span>
                       <span className="text-xs text-gray-500 ml-2">{row.weather}</span>
                     </td>
-                    <td className="p-3"><div className="font-bold text-gray-700">{row.target_group}</div><div className="text-xs text-gray-500">{row.area_id || '-'}</div></td>
-                    <td className="p-3 text-gray-700">{row.feed_content}</td>
-                    <td className="p-3">
+                    <td className="px-6 py-4"><div className="font-bold text-gray-700">{row.target_group}</div><div className="text-xs text-gray-500">{row.area_id || '-'}</div></td>
+                    <td className="px-6 py-4 text-gray-700">{row.feed_content}</td>
+                    <td className="px-6 py-4">
                       <div className="text-green-700 font-bold">+{row.given_amount_kg} kg</div>
                       {row.leftover_amount_kg > 0 && <div className="text-red-600 text-xs">剩 {row.leftover_amount_kg} kg</div>}
                     </td>
-                    <td className="p-3 text-sm text-gray-600 max-w-[150px] truncate" title={row.note}>{row.note || '-'}</td>
-                    <td className="p-3 text-center">
+                    <td className="px-6 py-4 text-sm text-gray-600 max-w-[150px] truncate" title={row.note}>{row.note || '-'}</td>
+                    <td className="px-6 py-4 text-center">
                       {row.firebaseId && (
                         <button onClick={() => onDeleteFeed(row.firebaseId)} className="text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors">刪除</button>
                       )}
